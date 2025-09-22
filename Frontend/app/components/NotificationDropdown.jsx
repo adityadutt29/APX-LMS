@@ -215,21 +215,6 @@ const NotificationDropdown = () => {
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="p-3 border-t bg-gray-50 text-center">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  window.location.href = '/teacher/notifications';
-                }}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-              >
-                View all notifications
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
