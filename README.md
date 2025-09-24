@@ -1,6 +1,7 @@
-# APX LMS
+# APX LMS - The AI-powered, all-in-one platform to revolutionize your learning experience.
 
-**The AI-powered, all-in-one platform to revolutionize your learning experience.**
+<img align=center width="2000" height="1333" alt="APX LMS" src="https://github.com/user-attachments/assets/4a17e875-c0b6-4b5d-831f-e03e7942152a" />
+
 
 APX LMS is a modern, feature-rich Learning Management System designed to provide a seamless and interactive learning experience for students, teachers, and administrators. It features a responsive and user-friendly interface built with Next.js and a powerful backend powered by Node.js, Express, and MongoDB.
 
@@ -168,3 +169,8 @@ Contributions are what make the open-source community such an amazing place to l
 3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4.  Push to the Branch (`git push origin feature/AmazingFeature`)
 5.  Open a Pull Request
+
+## 📞 Contact
+For any questions or support, please contact:
+- **Aditya Dutt** | [Github](https://github.com/adityadutt29) | [Linkedin](https://www.linkedin.com/in/adityadutt29/).
+- **Email**: <adityadutt29@yahoo.com>
