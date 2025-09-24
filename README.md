@@ -2,6 +2,7 @@
 
 <img align=center width="2000" height="1333" alt="APX LMS" src="https://github.com/user-attachments/assets/4a17e875-c0b6-4b5d-831f-e03e7942152a" />
 
+
 APX LMS is a modern, feature-rich Learning Management System designed to provide a seamless and interactive learning experience for students, teachers, and administrators. It features a responsive and user-friendly interface built with Next.js and a powerful backend powered by Node.js, Express, and MongoDB.
 
 ## Educational Impact
