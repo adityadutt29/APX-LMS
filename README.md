@@ -174,3 +174,5 @@ Contributions are what make the open-source community such an amazing place to l
 For any questions or support, please contact:
 - **Aditya Dutt** | [Github](https://github.com/adityadutt29) | [Linkedin](https://www.linkedin.com/in/adityadutt29/).
 - **Email**: <adityadutt29@yahoo.com>
+- **Aditya Chandra** | [Github](https://github.com/adityachandra512) | [Linkedin](https://linkedin.com/in/aditya-ch).
+- **Email**: <adityachandra419@gmail.com>
