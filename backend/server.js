@@ -6,6 +6,7 @@ const UserRoutes = require('./routes/UserRoutes');
 const AuthRoutes = require('./routes/AuthRoutes');
 const CourseRoutes = require('./routes/CourseRoutes');
 const PracticeRoutes = require('./routes/PracticeRoutes');
+const mindmapRoutes = require('./routes/mindmaps');
 const GradesRoutes = require('./routes/GradesRoutes');
 const NotificationRoutes = require('./routes/NotificationRoutes');
 const FileRoutes = require('./routes/FileRoutes');
@@ -46,7 +47,7 @@ app.use(cors({
     'https://127.0.0.1:3000'
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -56,6 +57,7 @@ app.use('/api/users', UserRoutes);
 app.use('/api/auth', AuthRoutes);
 app.use('/api/courses', CourseRoutes);
 app.use('/api/practice', PracticeRoutes);
+app.use('/api/mindmaps', mindmapRoutes);
 app.use('/api/grades', GradesRoutes);
 app.use('/api/notifications', NotificationRoutes);
 app.use('/api/files', FileRoutes);

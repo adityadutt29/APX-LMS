@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const flashcardSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   front: {
     type: String,
     required: true,
@@ -11,19 +16,31 @@ const flashcardSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  // Optional grouping fields so generated flashcards can be associated with a study pack
+  packName: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  sessionId: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
-}, {
-  timestamps: true
 });
 
-// Index for better query performance
-flashcardSchema.index({ userId: 1 });
-flashcardSchema.index({ front: 'text', back: 'text' });
+// Update the updatedAt field before saving
+flashcardSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
 
-const Flashcard = mongoose.model('Flashcard', flashcardSchema);
-
-module.exports = Flashcard;
+module.exports = mongoose.model('Flashcard', flashcardSchema);

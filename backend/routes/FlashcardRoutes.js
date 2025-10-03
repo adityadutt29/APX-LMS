@@ -6,6 +6,7 @@ const {
   deleteFlashcard,
   getFlashcard
 } = require('../controllers/FlashcardController');
+const { bulkCreateFlashcards } = require('../controllers/FlashcardController');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -22,6 +23,11 @@ router.get('/', getFlashcards);
 // @desc    Create new flashcard
 // @access  Private
 router.post('/', createFlashcard);
+
+// @route   POST /api/flashcards/bulk
+// @desc    Bulk create flashcards (associate with pack)
+// @access  Private
+router.post('/bulk', bulkCreateFlashcards);
 
 // @route   GET /api/flashcards/:id
 // @desc    Get single flashcard

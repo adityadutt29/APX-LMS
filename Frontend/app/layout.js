@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "AuraLMS.",
-  description: "- Your AI MockInterviewer",
+  title: "APX LMS",
+  description: "An AI-Powered Learning Management System",
 };
 
 export default function RootLayout({ children }) {
@@ -17,7 +17,5 @@ export default function RootLayout({ children }) {
           <Toaster />
           {children}</body>
       </html>
-    
-    
   );
 }

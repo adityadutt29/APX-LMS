@@ -6,6 +6,10 @@ const PracticeResultSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  sessionId: { // logical grouping id so we can create incomplete then finalize
+    type: String,
+    index: true
+  },
   fileName: {
     type: String,
     required: true,
@@ -13,7 +17,7 @@ const PracticeResultSchema = new mongoose.Schema({
   quizType: {
     type: String,
     enum: ['mcq', 'qa'],
-    required: true,
+    required: false,
   },
   extractedText: {
     type: String,
@@ -68,7 +72,49 @@ const PracticeResultSchema = new mongoose.Schema({
   },
   percentage: {
     type: Number,
-    required: true,
+    required: false,
+  },
+  flashcardCount: {
+    type: Number,
+    default: 0
+  },
+  mindmapGenerated: {
+    type: Boolean,
+    default: false
+  },
+   summary: { // AI generated structured summary (stored once per session or attempt)
+    overview: String,
+    keyPoints: [String],
+    sections: [{
+      title: String,
+      summary: String
+    }],
+    examples: [String],
+    studyTips: String,
+    insight: String
+  },
+  notes: { // AI generated detailed chapter-style notes
+    title: String,
+    introduction: String,
+    chapters: [{
+      number: Number,
+      title: String,
+      content: String,
+      keyPoints: [String],
+      examples: [String]
+    }],
+    conclusion: String,
+    references: [String],
+    generatedAt: Date
+  },
+  status: {
+    type: String,
+    enum: ['incomplete', 'completed', 'archived'],
+    default: 'incomplete',
+    index: true
+  },
+  archivedAt: {
+    type: Date
   },
   completedAt: {
     type: Date,
