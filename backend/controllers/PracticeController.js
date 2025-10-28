@@ -561,10 +561,20 @@ const getPracticeHistory = async (req, res) => {
       .limit(limit)
       .populate('user', 'name email');
 
+    // Map results to use percentage for quizzes/practice
+    const mappedResults = practiceResults.map(result => {
+      const obj = result.toObject();
+      // For practice/quiz results, use percentage as the primary score
+      if (obj.quizType === 'mcq' || obj.quizType === 'qa' || obj.quizType === 'practice') {
+        obj.score = obj.percentage;
+      }
+      return obj;
+    });
+
     res.json({
       success: true,
-      data: practiceResults,
-      count: practiceResults.length,
+      data: mappedResults,
+      count: mappedResults.length,
       totalCount,
       page,
       limit
@@ -592,9 +602,15 @@ const getPracticeResult = async (req, res) => {
       return res.status(404).json({ message: 'Practice result not found' });
     }
 
+    // Map result to use percentage for quizzes/practice
+    const obj = practiceResult.toObject();
+    if (obj.quizType === 'mcq' || obj.quizType === 'qa' || obj.quizType === 'practice') {
+      obj.score = obj.percentage;
+    }
+
     res.json({
       success: true,
-      data: practiceResult
+      data: obj
     });
   } catch (error) {
     console.error('Get practice result error:', error);
@@ -959,10 +975,20 @@ const getUserPracticeResults = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(limit);
 
+    // Map results to use percentage for quizzes/practice
+    const mappedResults = practiceResults.map(result => {
+      const obj = result.toObject();
+      // For practice/quiz results, use percentage as the primary score
+      if (obj.quizType === 'mcq' || obj.quizType === 'qa' || obj.quizType === 'practice') {
+        obj.score = obj.percentage;
+      }
+      return obj;
+    });
+
     res.json({
       success: true,
-      data: practiceResults,
-      count: practiceResults.length,
+      data: mappedResults,
+      count: mappedResults.length,
       totalCount,
       page,
       limit
