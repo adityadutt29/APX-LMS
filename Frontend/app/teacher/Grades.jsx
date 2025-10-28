@@ -34,7 +34,7 @@ const Grades = () => {
             return [
               ...scores.assignments.map(a => ({ student: studentName, assignment: a.course, type: 'Assignment', score: a.score })),
               ...scores.viva.map(v => ({ student: studentName, assignment: v.subject || 'Viva', type: 'Viva', score: v.score })),
-              ...scores.quizzes.map(q => ({ student: studentName, assignment: q.quizName || 'Practice', type: 'Practice', score: q.score })),
+              ...scores.quizzes.map(q => ({ student: studentName, assignment: q.quizName || q.fileName || 'Practice', type: 'Practice', percentage: q.percentage, score: q.score })),
             ];
           });
           setGrades(flatGrades);
@@ -105,7 +105,7 @@ const Grades = () => {
                 </td>
                 <td className="p-4">
                   <span className="px-2 py-1 bg-green-100 text-green-600 rounded">
-                    {grade.score}%
+                    {grade.type === 'Practice' ? `${grade.percentage || 0}%` : grade.score}
                   </span>
                 </td>
               </tr>

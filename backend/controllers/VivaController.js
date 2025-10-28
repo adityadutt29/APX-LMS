@@ -1,7 +1,6 @@
 const Viva = require('../models/Viva');
 const UserAnswer = require('../models/UserAnswer');
 const CerebrasService = require('../services/CerebrasService');
-const { v4: uuidv4 } = require('uuid');
 
 // Generate viva questions
 exports.generateViva = async (req, res) => {
@@ -17,7 +16,10 @@ exports.generateViva = async (req, res) => {
       process.env.VIVA_QUESTION_COUNT || 5
     );
 
+    // Dynamically import uuid and generate mockId
+    const { v4: uuidv4 } = await import('uuid');
     const mockId = uuidv4();
+
     const viva = new Viva({
       mockId,
       subject,
