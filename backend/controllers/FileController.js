@@ -40,6 +40,7 @@ const getFile = async (req, res) => {
 
     // Check if file exists
     if (!fs.existsSync(filePath)) {
+      console.warn(`File not found: ${filename} at path: ${filePath}`);
       return res.status(404).json({ message: 'File not found' });
     }
 
@@ -94,6 +95,7 @@ const downloadFile = async (req, res) => {
 
     // Check if file exists
     if (!fs.existsSync(filePath)) {
+      console.warn(`File not found for download: ${filename} at path: ${filePath}`);
       return res.status(404).json({ message: 'File not found' });
     }
 
@@ -112,8 +114,49 @@ const downloadFile = async (req, res) => {
   }
 };
 
+// @desc    Check if a file exists
+// @route   GET /api/files/:filename/exists
+// @access  Private
+const checkFileExists = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, '../uploads/course-files', filename);
+    
+    const exists = fs.existsSync(filePath);
+    
+    res.json({
+      exists,
+      filename,
+      path: exists ? filePath : null,
+      size: exists ? fs.statSync(filePath).size : null
+    });
+  } catch (error) {
+    console.error('Check file exists error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// @desc    Utility function to clean up missing files (for admin use)
+// @route   POST /api/files/cleanup
+// @access  Private (should be admin only)
+const cleanupMissingFiles = async (req, res) => {
+  try {
+    // This would need to be implemented based on your database structure
+    // For now, just return a placeholder response
+    res.json({
+      message: 'Cleanup functionality needs to be implemented based on your database schema',
+      note: 'This function should scan database records for file references and remove entries for non-existent files'
+    });
+  } catch (error) {
+    console.error('Cleanup missing files error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   uploadFiles,
   getFile,
-  downloadFile
+  downloadFile,
+  checkFileExists,
+  cleanupMissingFiles
 };

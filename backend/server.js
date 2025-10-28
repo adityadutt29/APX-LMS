@@ -24,6 +24,7 @@ const VivaRoutes = require('./routes/VivaRoutes');
 const AdminOverviewRoutes = require('./routes/AdminOverviewRoutes');
 const StudentYoutubeCoursesRoutes = require('./routes/StudentYoutubeCoursesRoutes');
 const YoutubeCourseShareRoutes = require('./routes/YoutubeCourseShareRoutes');
+const CompilerRoutes = require('./routes/CompilerRoutes');
 const cors = require('cors');
 
 const app = express();
@@ -74,6 +75,7 @@ app.use('/api/viva', VivaRoutes);
 app.use('/api/admin', AdminOverviewRoutes);
 app.use('/api/student-youtubecourses', StudentYoutubeCoursesRoutes);
 app.use('/api/youtubecourse-share', YoutubeCourseShareRoutes);
+app.use('/api/compiler', CompilerRoutes);
 
 app.get('/', (req, res) => res.send('API Running with WebSocket support'));
 

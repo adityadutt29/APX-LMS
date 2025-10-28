@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.16.1",
+    "@monaco-editor/react": "^4.7.0",
     "@neondatabase/serverless": "^0.9.5",
     "@radix-ui/react-collapsible": "^1.1.0",
     "@radix-ui/react-dialog": "^1.1.1",

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Code2, PlayCircle, Terminal, Box, Sun, Moon, Save, Check, X, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import MonacoEditor from '../../components/MonacoEditor';
 
 // Language types and templates
 const LANGUAGES = {
@@ -69,6 +70,10 @@ export default function WebCompiler() {
   const router = useRouter();
   const [language, setLanguage] = useState('cpp');
   const [code, setCode] = useState(LANGUAGES.cpp.template);
+  
+  // Use backend compile endpoint on local server (no external API calls from browser)
+  // This forwards requests to OneCompiler via the backend proxy which requires RAPIDAPI_KEY
+  const COMPILER_URL = process.env.NEXT_PUBLIC_COMPILER_URL || 'http://localhost:5001/api/compiler/run';
   const [input, setInput] = useState('5');
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
@@ -84,6 +89,7 @@ export default function WebCompiler() {
     { input: '-3', expectedOutput: '-6' }
   ]);
   const [testResults, setTestResults] = useState([]);
+  const editorRef = useRef(null);
 
   // Initialize code from localStorage
   useEffect(() => {
@@ -159,6 +165,97 @@ export default function WebCompiler() {
     URL.revokeObjectURL(url);
   };
 
+  // Simple formatter helpers -------------------------------------------------
+  const formatCLike = (src) => {
+    if (!src) return src;
+    // Normalize newlines
+    let s = String(src).replace(/\r\n/g, '\n');
+    // Ensure braces are on their own lines so indentation is simpler
+    s = s.replace(/\s*{\s*/g, ' {\n').replace(/\s*}\s*/g, '\n}\n');
+    const lines = s.split('\n');
+    let indent = 0;
+    const out = [];
+    for (let rawLine of lines) {
+      const line = rawLine.trim();
+      if (line === '') {
+        out.push('');
+        continue;
+      }
+      // decrease indent before lines starting with a closing brace
+      if (line.startsWith('}')) {
+        indent = Math.max(0, indent - 1);
+      }
+      out.push('    '.repeat(indent) + line);
+      // increase indent after lines that end with an opening brace
+      if (line.endsWith('{')) {
+        indent += 1;
+      }
+      // also handle single-line brackets like ") {" or "){"
+      // handled by trimming and previous logic
+    }
+    return out.join('\n');
+  };
+
+  const formatPython = (src) => {
+    if (!src) return src;
+    const s = String(src).replace(/\r\n/g, '\n');
+    const lines = s.split('\n');
+    let indent = 0;
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const raw = lines[i];
+      const trimmed = raw.trim();
+      if (trimmed === '') {
+        out.push('');
+        continue;
+      }
+      // decrease indent if the line starts with keyword that dedents (simple heuristics)
+      const dedentStarters = ['return', 'pass', 'break', 'continue', 'raise'];
+      // apply current indent
+      out.push('    '.repeat(indent) + trimmed);
+      // if line ends with colon, increase indent for next line
+      if (trimmed.endsWith(':')) {
+        indent += 1;
+      }
+      // very naive: if next line is less indented, reduce indent (can't detect easily here)
+    }
+    return out.join('\n');
+  };
+
+  const formatCode = () => {
+    try {
+      // If Monaco editor is mounted, try to run its formatting action
+      const editor = editorRef?.current;
+      if (editor && editor.getAction) {
+        try {
+          const action = editor.getAction('editor.action.formatDocument');
+          if (action) action.run();
+          setAutoSaveStatus('Formatted');
+          setTimeout(() => setAutoSaveStatus('Saved'), 800);
+          setIsSaved(false);
+          return;
+        } catch (e) {
+          // fall back to simple formatters below
+          console.warn('Monaco format failed, falling back to basic formatter', e);
+        }
+      }
+
+      let formatted = code;
+      if (language === 'python') {
+        formatted = formatPython(code);
+      } else {
+        // treat cpp/java/js/c as C-like
+        formatted = formatCLike(code);
+      }
+      setCode(formatted);
+      setIsSaved(false);
+      setAutoSaveStatus('Formatted');
+      setTimeout(() => setAutoSaveStatus('Saved'), 800);
+    } catch (e) {
+      console.error('Format error', e);
+    }
+  };
+
   const addTestCase = () => {
     setTestCases([...testCases, { input: '', expectedOutput: '' }]);
   };
@@ -189,7 +286,7 @@ export default function WebCompiler() {
     setTestResults([]);
 
     try {
-      const response = await fetch('https://compiler-backend-woad.vercel.app/api/verify', {
+      const response = await fetch(COMPILER_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -197,7 +294,10 @@ export default function WebCompiler() {
         body: JSON.stringify({
           language,
           code,
-          testCases: testCases.length > 0 ? testCases : [{ input, expectedOutput: '' }]
+          // always include the custom input as a top-level field so the server proxy
+          // can prefer it when provided. Keep testCases for batch testing as well.
+          input,
+          testCases: testCases && testCases.length > 0 ? testCases : []
         }),
       });
       
@@ -277,15 +377,24 @@ export default function WebCompiler() {
                 <Box size={16} />
                 <h2 className="font-semibold">Code Editor</h2>
               </div>
-              <button 
-                onClick={saveCode}
-                className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
-                  !isSaved ? 'text-yellow-500' : ''
-                } ${t.card} ${t.border} border`}
-              >
-                <Save size={14} />
-                {!isSaved ? 'Save*' : 'Download'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={formatCode}
+                  className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${t.card} ${t.border} border`}
+                  title="Format (basic)"
+                >
+                  Format
+                </button>
+                <button 
+                  onClick={saveCode}
+                  className={`px-3 py-1 rounded text-sm flex items-center gap-1 ${
+                    !isSaved ? 'text-yellow-500' : ''
+                  } ${t.card} ${t.border} border`}
+                >
+                  <Save size={14} />
+                  {!isSaved ? 'Save*' : 'Download'}
+                </button>
+              </div>
             </div>
             
             <div className={`${t.card} rounded-lg overflow-hidden border ${t.border}`}>
@@ -317,13 +426,18 @@ export default function WebCompiler() {
                 </div>
               </div>
               
-              <textarea
-                value={code}
-                onChange={handleCodeChange}
-                className={`w-full h-96 p-4 font-mono ${t.editor} focus:outline-none`}
-                spellCheck="false"
-                placeholder={`Write your ${language} code here...`}
-              />
+              <div className="w-full h-96">
+                <MonacoEditor
+                  value={code}
+                  language={language}
+                  onChange={(val) => {
+                    setCode(val || '');
+                    setIsSaved(false);
+                  }}
+                  theme={theme}
+                  editorRef={editorRef}
+                />
+              </div>
             </div>
 
           </div>

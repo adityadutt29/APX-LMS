@@ -191,7 +191,7 @@ export default function WebCompiler() {
     setTestResults([]);
 
     try {
-      const response = await fetch('https://compiler-backend-woad.vercel.app/api/verify', {
+      const response = await fetch('http://localhost:5001/api/compiler/run', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,6 +199,8 @@ export default function WebCompiler() {
         body: JSON.stringify({
           language,
           code,
+          // include input and testCases (server will prefer explicit stdin)
+          stdin: input,
           testCases: testCases.length > 0 ? testCases : [{ input, expectedOutput: '' }]
         }),
       });
