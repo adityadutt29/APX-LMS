@@ -34,7 +34,10 @@ export default function FileViewer({ file, onClose }) {
         })
 
         if (!response.ok) {
-          throw new Error(`Failed to load file: ${response.status}`)
+          if (response.status === 404) {
+            throw new Error('File not found on server. The file may have been deleted or moved.');
+          }
+          throw new Error(`Failed to load file: ${response.status}`);
         }
 
         const blob = await response.blob()
@@ -153,16 +156,32 @@ export default function FileViewer({ file, onClose }) {
                   <span className="text-2xl text-red-600">⚠️</span>
                 </div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Error Loading File
+                  {error.includes('not found') ? 'File Not Found' : 'Error Loading File'}
                 </h3>
                 <p className="text-gray-600 mb-4">{error}</p>
-                <button
-                  onClick={handleDownload}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center mx-auto"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Try Download Instead
-                </button>
+                <div className="space-y-2">
+                  {error.includes('not found') ? (
+                    <>
+                      <p className="text-sm text-gray-500">
+                        This file may have been deleted or is no longer available.
+                      </p>
+                      <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 mr-2"
+                      >
+                        Close Viewer
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleDownload}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center mx-auto"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Try Download Instead
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ) : fileBlob && isPDF ? (
