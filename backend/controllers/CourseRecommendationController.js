@@ -4,6 +4,7 @@ const Course = require("../models/Course");
 const UserAnswer = require("../models/UserAnswer");
 const Viva = require("../models/Viva");
 const YoutubeCourse = require("../models/youtubeCourse");
+const YoutubeCourseShare = require("../models/YoutubeCourseShare");
 const { createNotification } = require("./NotificationController");
 const mongoose = require("mongoose");
 const axios = require("axios");
@@ -144,6 +145,13 @@ const generateAndAssignCourse = async (req, res) => {
     });
 
     await newCourse.save();
+
+    // Create YoutubeCourseShare entry to automatically assign the course to the student
+    await YoutubeCourseShare.create({
+      course: newCourse._id,
+      student: studentId,
+      sharedBy: teacherId,
+    });
 
     // Send notification to student
     await createNotification({
