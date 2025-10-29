@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const YoutubeCourseSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -21,26 +21,41 @@ const YoutubeCourseSchema = new mongoose.Schema({
             {
               language: String,
               code: String,
-              explanation: String
-            }
-          ]
-        }
-      ]
-    }
+              explanation: String,
+            },
+          ],
+        },
+      ],
+    },
   ],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    ref: "User",
+    required: true,
   },
-  sharedWith: [{
+  sharedWith: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+  isPersonalized: {
+    type: Boolean,
+    default: false,
+  },
+  targetStudent: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
+    ref: "User",
+  },
+  generatedFor: {
+    type: String,
+    enum: ["general", "remedial", "advanced"],
+    default: "general",
+  },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-module.exports = mongoose.model('youtubeCourse', YoutubeCourseSchema);
+module.exports = mongoose.model("youtubeCourse", YoutubeCourseSchema);

@@ -1,9 +1,10 @@
-const PracticeResult = require('../models/PracticeResult');
-const User = require('../models/Users');
-const Course = require('../models/Course');
-const UserAnswer = require('../models/UserAnswer');
-const Viva = require('../models/Viva');
-const mongoose = require('mongoose');
+const PracticeResult = require("../models/PracticeResult");
+const User = require("../models/Users");
+const Course = require("../models/Course");
+const UserAnswer = require("../models/UserAnswer");
+const Viva = require("../models/Viva");
+const axios = require("axios");
+const mongoose = require("mongoose");
 
 // @desc    Get all grades for teacher dashboard
 // @route   GET /api/grades/all
@@ -12,26 +13,29 @@ const getAllGrades = async (req, res) => {
   try {
     // Fetch courses for assignment scores
     const courses = await Course.find().lean();
-    
+
     // Fetch practice results (quizzes) with percentage
-    const quizScoresRaw = await PracticeResult.find({}, 'user score percentage fileName quizType createdAt');
-    
+    const quizScoresRaw = await PracticeResult.find(
+      {},
+      "user score percentage fileName quizType createdAt"
+    );
+
     // Fetch viva feedbacks and vivas
     const vivaFeedbacks = await UserAnswer.find({});
     const vivas = await Viva.find().lean();
 
     // Extract assignment scores from courses
     let assignmentScores = [];
-    courses.forEach(course => {
+    courses.forEach((course) => {
       if (Array.isArray(course.assignments)) {
-        course.assignments.forEach(assignment => {
+        course.assignments.forEach((assignment) => {
           if (Array.isArray(assignment.submissions)) {
-            assignment.submissions.forEach(sub => {
-              if (sub.student && typeof sub.grade === 'number') {
+            assignment.submissions.forEach((sub) => {
+              if (sub.student && typeof sub.grade === "number") {
                 assignmentScores.push({
                   studentId: sub.student.toString(),
                   course: course.title,
-                  score: sub.grade
+                  score: sub.grade,
                 });
               }
             });
@@ -42,82 +46,96 @@ const getAllGrades = async (req, res) => {
 
     // Calculate viva scores
     const vivaScores = [];
-    vivas.forEach(v => {
+    vivas.forEach((v) => {
       const studentEmail = v.createdBy;
       if (studentEmail) {
-        const answers = vivaFeedbacks.filter(ans => 
-          ans.mockIdRef === v.mockId && 
-          ans.userEmail === studentEmail
+        const answers = vivaFeedbacks.filter(
+          (ans) => ans.mockIdRef === v.mockId && ans.userEmail === studentEmail
         );
-        
+
         if (answers.length > 0) {
           const totalRating = answers.reduce((sum, ans) => {
             const rating = parseFloat(ans.rating) || 0;
             return sum + rating;
           }, 0);
           const averageRating = totalRating / answers.length;
-          
+
           // Convert rating (out of 10) to percentage (out of 100)
           const percentageScore = averageRating * 10;
-          
+
           vivaScores.push({
             studentId: studentEmail,
-            subject: v.topics || v.subject || 'Viva',
-            score: Math.round(percentageScore * 100) / 100 // Round to 2 decimal places
+            subject: v.topics || v.subject || "Viva",
+            score: Math.round(percentageScore * 100) / 100, // Round to 2 decimal places
           });
         }
       }
     });
 
     // Map quiz scores with percentage
-    const quizScores = quizScoresRaw.map(q => ({
+    const quizScores = quizScoresRaw.map((q) => ({
       studentId: q.user?.toString(),
       quizName: q.fileName,
       fileName: q.fileName,
       quizType: q.quizType,
       percentage: q.percentage || 0,
       score: q.score || 0,
-      createdAt: q.createdAt
+      createdAt: q.createdAt,
     }));
 
     // Build studentScores object
     const studentScores = {};
-    
-    assignmentScores.forEach(a => {
-      if (!studentScores[a.studentId]) studentScores[a.studentId] = { assignments: [], viva: [], quizzes: [] };
-      studentScores[a.studentId].assignments.push({ course: a.course, score: a.score });
+
+    assignmentScores.forEach((a) => {
+      if (!studentScores[a.studentId])
+        studentScores[a.studentId] = { assignments: [], viva: [], quizzes: [] };
+      studentScores[a.studentId].assignments.push({
+        course: a.course,
+        score: a.score,
+      });
     });
-    
-    vivaScores.forEach(v => {
-      if (!studentScores[v.studentId]) studentScores[v.studentId] = { assignments: [], viva: [], quizzes: [] };
-      studentScores[v.studentId].viva.push({ subject: v.subject, score: v.score });
+
+    vivaScores.forEach((v) => {
+      if (!studentScores[v.studentId])
+        studentScores[v.studentId] = { assignments: [], viva: [], quizzes: [] };
+      studentScores[v.studentId].viva.push({
+        subject: v.subject,
+        score: v.score,
+      });
     });
-    
-    quizScores.forEach(q => {
-      if (!studentScores[q.studentId]) studentScores[q.studentId] = { assignments: [], viva: [], quizzes: [] };
-      studentScores[q.studentId].quizzes.push({ 
-        quizName: q.quizName, 
+
+    quizScores.forEach((q) => {
+      if (!studentScores[q.studentId])
+        studentScores[q.studentId] = { assignments: [], viva: [], quizzes: [] };
+      studentScores[q.studentId].quizzes.push({
+        quizName: q.quizName,
         fileName: q.fileName,
         quizType: q.quizType,
         percentage: q.percentage,
         score: q.score,
-        createdAt: q.createdAt
+        createdAt: q.createdAt,
       });
     });
 
     // Fetch user names
     const studentIds = Object.keys(studentScores);
-    const objectIds = studentIds.filter(id => mongoose.Types.ObjectId.isValid(id)).map(id => new mongoose.Types.ObjectId(id));
-    const emails = studentIds.filter(id => !mongoose.Types.ObjectId.isValid(id));
-    const users = await User.find({ $or: [{ _id: { $in: objectIds } }, { email: { $in: emails } }] }).lean();
-    
+    const objectIds = studentIds
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const emails = studentIds.filter(
+      (id) => !mongoose.Types.ObjectId.isValid(id)
+    );
+    const users = await User.find({
+      $or: [{ _id: { $in: objectIds } }, { email: { $in: emails } }],
+    }).lean();
+
     const userMap = {};
-    users.forEach(u => {
+    users.forEach((u) => {
       userMap[u._id.toString()] = u.name;
       userMap[u.email] = u.name;
     });
-    
-    studentIds.forEach(id => {
+
+    studentIds.forEach((id) => {
       studentScores[id].name = userMap[id] || id;
       studentScores[id].studentName = userMap[id] || id;
       studentScores[id].student = userMap[id] || id;
@@ -125,10 +143,10 @@ const getAllGrades = async (req, res) => {
 
     res.json(studentScores);
   } catch (error) {
-    console.error('Get all grades error:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch grades',
-      error: error.message 
+    console.error("Get all grades error:", error);
+    res.status(500).json({
+      message: "Failed to fetch grades",
+      error: error.message,
     });
   }
 };
@@ -139,46 +157,68 @@ const getAllGrades = async (req, res) => {
 const getStudentGrades = async (req, res) => {
   try {
     const { studentId } = req.params;
-    
-    const user = await User.findById(studentId).select('name email');
+
+    const user = await User.findById(studentId).select("name email");
     if (!user) {
-      return res.status(404).json({ message: 'Student not found' });
+      return res.status(404).json({ message: "Student not found" });
     }
-    
+
     const studentData = {
       name: user.name,
       email: user.email,
       assignments: [],
       viva: [],
-      quizzes: []
+      quizzes: [],
     };
-    
+
     // Fetch practice results (quizzes)
     const practiceResults = await PracticeResult.find({
       user: studentId,
-      status: { $ne: 'archived' }
-    }).select('fileName quizType percentage score createdAt');
-    
-    studentData.quizzes = practiceResults.map(result => ({
-      quizName: result.fileName || 'Quiz',
+      status: { $ne: "archived" },
+    }).select("fileName quizType percentage score createdAt");
+
+    studentData.quizzes = practiceResults.map((result) => ({
+      quizName: result.fileName || "Quiz",
       fileName: result.fileName,
       quizType: result.quizType,
       percentage: result.percentage || 0,
       score: result.score || 0,
-      createdAt: result.createdAt
+      createdAt: result.createdAt,
     }));
-    
+
     res.json(studentData);
   } catch (error) {
-    console.error('Get student grades error:', error);
-    res.status(500).json({ 
-      message: 'Failed to fetch student grades',
-      error: error.message 
+    console.error("Get student grades error:", error);
+    res.status(500).json({
+      message: "Failed to fetch student grades",
+      error: error.message,
     });
+  }
+};
+
+// Helper function to trigger recommendation updates (called from other controllers)
+const triggerRecommendationUpdate = async (
+  studentId,
+  activityType,
+  score,
+  topic
+) => {
+  try {
+    // This would be called internally when new grades are added
+    // For now, we'll just log it - in production, you might want to queue this
+    console.log(
+      `Triggering recommendation update for student ${studentId}: ${activityType} - ${score}% in ${topic}`
+    );
+
+    // You could make an internal API call here or use a job queue
+    // For simplicity, we'll just log the event
+  } catch (error) {
+    console.error("Error triggering recommendation update:", error);
   }
 };
 
 module.exports = {
   getAllGrades,
-  getStudentGrades
+  getStudentGrades,
+  triggerRecommendationUpdate,
 };
