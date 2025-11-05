@@ -6,14 +6,17 @@ const {
   getUserVivas,
   deleteViva,
   submitAnswer,
-  getVivaFeedback
+  getVivaFeedback,
+  getUserVivaResults
 } = require('../controllers/VivaController');
 const auth = require('../middleware/auth');
-const protect = require('../middleware/auth');
 const { validateVivaGeneration, validateAnswerSubmission } = require('../middleware/validateViva');
 
 // All routes require authentication
 router.use(auth);
+
+// Get user's viva practice results for profile
+router.get('/user/results', getUserVivaResults);
 
 // Generate new viva
 router.post('/generate', validateVivaGeneration, generateViva);
@@ -32,15 +35,5 @@ router.post('/:mockId/submit', validateAnswerSubmission, submitAnswer);
 
 // Get viva feedback
 router.get('/:mockId/feedback', getVivaFeedback);
-
-// GET /api/viva/all - get all vivas
-router.get('/all', protect, async (req, res) => {
-  try {
-    const vivas = await Viva.find({});
-    res.json(vivas);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch vivas' });
-  }
-});
 
 module.exports = router;

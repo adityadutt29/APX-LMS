@@ -36,8 +36,11 @@ function YoutubeCourses() {
       });
       if (!response.ok) throw new Error("Failed to fetch courses");
       const data = await response.json();
-      setCourses(data);
+      // Filter out null/undefined courses
+      const validCourses = (data || []).filter(course => course && course._id && course.name);
+      setCourses(validCourses);
     } catch (err) {
+      console.error('Error fetching courses:', err);
       setCourses([]);
     } finally {
       setLoading(false);
@@ -120,31 +123,40 @@ function YoutubeCourses() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {courses.map((course) => (
-              <div key={course._id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all p-8 flex flex-col relative">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-800 line-clamp-2 pr-2">{course.name}</h3>
+            {courses.map((course) => {
+              // Safety check
+              if (!course || !course._id) return null;
+              
+              return (
+                <div key={course._id} className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all p-8 flex flex-col relative">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-800 line-clamp-2 pr-2">
+                      {course.name || 'Untitled Course'}
+                    </h3>
+                  </div>
+                  <p className="text-gray-600 mb-4 line-clamp-2">
+                    {course.summary || 'No description available'}
+                  </p>
+                  <div className="flex gap-4 text-sm text-gray-500 mb-2">
+                    <span className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
+                      <BookOpen className="w-4 h-4 mr-1" />
+                      {course.chapters?.length || 0} Chapters
+                    </span>
+                    <span className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {course.totalDuration || 'N/A'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleViewCourse(course)}
+                    className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow hover:shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-105"
+                  >
+                    <Eye className="w-5 h-5" />
+                    View Course
+                  </button>
                 </div>
-                <p className="text-gray-600 mb-4 line-clamp-2">{course.summary}</p>
-                <div className="flex gap-4 text-sm text-gray-500 mb-2">
-                  <span className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
-                    <BookOpen className="w-4 h-4 mr-1" />
-                    {course.chapters?.length || 0} Chapters
-                  </span>
-                  <span className="flex items-center bg-gray-50 px-3 py-2 rounded-lg">
-                    <Clock className="w-4 h-4 mr-1" />
-                    {course.totalDuration}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleViewCourse(course)}
-                  className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-semibold shadow hover:shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-105"
-                >
-                  <Eye className="w-5 h-5" />
-                  View Course
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

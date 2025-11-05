@@ -1075,20 +1075,10 @@ export default function Practice() {
         {/* Upload PDF Section */}
         {view === "upload" && (
           <div className="mx-6 bg-white rounded-2xl shadow-sm border border-gray-200">
-            <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-blue-50 rounded-t-2xl border-b border-gray-100">
-              <div className="flex items-center justify-center gap-3 mb-2">
-                <FileText className="w-8 h-8 text-purple-600" />
-                <h1 className="text-2xl font-bold text-gray-900">PDF Practice Generator</h1>
-              </div>
-              <p className="text-sm text-gray-600">Upload a PDF to generate personalized quizzes and practice questions</p>
-            </div>
 
             {!extractedText ? (
-              <div className="p-8">
-                <div className="text-center py-8">
-                  <p className="text-base text-gray-700 mb-2">Click <strong className="text-purple-600">Upload New Content</strong> to upload a PDF, paste text, or add a YouTube link.</p>
-                  <p className="text-sm text-gray-500">After you submit content, choose a quiz type to generate questions.</p>
-                </div>
+              <div className="p-1">
+                
               </div>
             ) : (
               <div className="mx-6 space-y-8 p-8">

@@ -22,7 +22,8 @@ import {
   GraduationCap,
   Building,
   Users,
-  Star
+  Star,
+  MessageCircle // Changed from Target/Star for viva
 } from 'lucide-react'
 
 export default function Profile() {
@@ -32,7 +33,7 @@ export default function Profile() {
   const [courses, setCourses] = useState([])
   const [assignments, setAssignments] = useState([])
   const [practiceResults, setPracticeResults] = useState([])
-  const [interviewResults, setInterviewResults] = useState([])
+  const [vivaResults, setVivaResults] = useState([]) // Changed from interviewResults
   const [activeTab, setActiveTab] = useState('overview')
 
   useEffect(() => {
@@ -105,21 +106,21 @@ export default function Profile() {
         console.log('Practice results endpoint not available')
       }
 
-      // Fetch interview results
+      // Fetch viva practice results (changed from interview results)
       try {
-  const interviewResponse = await fetch('http://localhost:5001/api/interviews/user/results', {
+        const vivaResponse = await fetch('http://localhost:5001/api/viva/user/results', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         })
         
-        if (interviewResponse.ok) {
-          const interviewData = await interviewResponse.json()
-          setInterviewResults(interviewData.data || [])
+        if (vivaResponse.ok) {
+          const vivaData = await vivaResponse.json()
+          setVivaResults(vivaData.data || [])
         }
       } catch (error) {
-        console.log('Interview results endpoint not available')
+        console.log('Viva results endpoint not available')
       }
 
       setLoading(false)
@@ -146,11 +147,11 @@ export default function Profile() {
       ? (practiceResults.reduce((sum, r) => sum + (r.percentage || 0), 0) / practiceResults.length).toFixed(1)
       : 'N/A',
     practiceTests: practiceResults.length,
-    interviewsCompleted: interviewResults.length,
-    averageInterviewRating: (() => {
-      if (interviewResults.length === 0) return 'N/A'
-      const totalRating = interviewResults.reduce((sum, r) => sum + parseInt(r.rating || 0), 0)
-      return (totalRating / interviewResults.length).toFixed(1)
+    vivaCompleted: vivaResults.length, // Changed from interviewsCompleted
+    averageVivaScore: (() => { // Changed from averageInterviewRating
+      if (vivaResults.length === 0) return 'N/A'
+      const totalScore = vivaResults.reduce((sum, r) => sum + (r.score || 0), 0)
+      return (totalScore / vivaResults.length).toFixed(1)
     })()
   }
 
@@ -245,7 +246,7 @@ export default function Profile() {
             courses={courses}
             assignments={assignments.slice(0, 3)}
             practiceResults={practiceResults.slice(0, 3)}
-            interviewResults={interviewResults.slice(0, 3)}
+            vivaResults={vivaResults.slice(0, 3)} // Changed
             user={user}
           />
         )}
@@ -261,7 +262,7 @@ export default function Profile() {
         {activeTab === 'performance' && (
           <PerformanceTab 
             practiceResults={practiceResults} 
-            interviewResults={interviewResults}
+            vivaResults={vivaResults} // Changed
             performanceMetrics={performanceMetrics} 
           />
         )}
@@ -275,7 +276,7 @@ export default function Profile() {
 }
 
 // Overview Tab Component
-function OverviewTab({ performanceMetrics, courses, assignments, practiceResults, interviewResults, user }) {
+function OverviewTab({ performanceMetrics, courses, assignments, practiceResults, vivaResults, user }) {
   return (
     <div className="space-y-8">
       {/* Performance Metrics Cards */}
@@ -299,9 +300,9 @@ function OverviewTab({ performanceMetrics, courses, assignments, practiceResults
           color="purple"
         />
         <MetricCard
-          icon={Target}
-          label="Interviews"
-          value={performanceMetrics.interviewsCompleted}
+          icon={MessageCircle} // Changed from Target
+          label="Viva Practice" // Changed
+          value={performanceMetrics.vivaCompleted}
           color="orange"
         />
       </div>
@@ -391,27 +392,27 @@ function OverviewTab({ performanceMetrics, courses, assignments, practiceResults
           </div>
         </div>
 
-        {/* Interview Results */}
+        {/* Viva Practice Results */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Target className="w-5 h-5 mr-2" />
-            Interview Results
+            <MessageCircle className="w-5 h-5 mr-2" />
+            Viva Practice
           </h3>
           <div className="space-y-3">
-            {interviewResults.map((result, index) => (
+            {vivaResults.map((result, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    parseInt(result.rating) >= 4 ? 'bg-green-100' : 
-                    parseInt(result.rating) >= 3 ? 'bg-yellow-100' : 'bg-red-100'
+                    result.score >= 80 ? 'bg-green-100' : 
+                    result.score >= 60 ? 'bg-yellow-100' : 'bg-red-100'
                   }`}>
-                    <Star className={`w-4 h-4 ${
-                      parseInt(result.rating) >= 4 ? 'text-green-600' : 
-                      parseInt(result.rating) >= 3 ? 'text-yellow-600' : 'text-red-600'
+                    <MessageCircle className={`w-4 h-4 ${
+                      result.score >= 80 ? 'text-green-600' : 
+                      result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                     }`} />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900 text-sm">Interview</p>
+                    <p className="font-medium text-gray-900 text-sm">Viva Practice</p>
                     <p className="text-xs text-gray-600">
                       {new Date(result.createdAt).toLocaleDateString()}
                     </p>
@@ -419,16 +420,16 @@ function OverviewTab({ performanceMetrics, courses, assignments, practiceResults
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-medium ${
-                    parseInt(result.rating) >= 4 ? 'text-green-600' : 
-                    parseInt(result.rating) >= 3 ? 'text-yellow-600' : 'text-red-600'
+                    result.score >= 80 ? 'text-green-600' : 
+                    result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                   }`}>
-                    {result.rating}/5
+                    {result.score}%
                   </p>
                 </div>
               </div>
             ))}
-            {interviewResults.length === 0 && (
-              <p className="text-gray-500 text-center py-4">No interviews yet</p>
+            {vivaResults.length === 0 && (
+              <p className="text-gray-500 text-center py-4">No viva practice yet</p>
             )}
           </div>
         </div>
@@ -635,7 +636,7 @@ function AssignmentsTab({ assignments }) {
 }
 
 // Performance Tab Component
-function PerformanceTab({ practiceResults, interviewResults, performanceMetrics }) {
+function PerformanceTab({ practiceResults, vivaResults, performanceMetrics }) {
   return (
     <div className="space-y-8">
       {/* Performance Overview */}
@@ -643,7 +644,7 @@ function PerformanceTab({ practiceResults, interviewResults, performanceMetrics 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Assignment Average</p>
+              <p className="text-sm text-gray-600 mb-1">Assignment Average</p>
               <p className="text-3xl font-bold text-gray-900">
                 {performanceMetrics.averageAssignmentGrade !== 'N/A' 
                   ? `${performanceMetrics.averageAssignmentGrade}%` 
@@ -659,7 +660,7 @@ function PerformanceTab({ practiceResults, interviewResults, performanceMetrics 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Practice Average</p>
+              <p className="text-sm text-gray-600 mb-1">Practice Average</p>
               <p className="text-3xl font-bold text-gray-900">
                 {performanceMetrics.averagePracticeScore !== 'N/A' 
                   ? `${performanceMetrics.averagePracticeScore}%` 
@@ -675,15 +676,15 @@ function PerformanceTab({ practiceResults, interviewResults, performanceMetrics 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Interview Average</p>
+              <p className="text-sm text-gray-600 mb-1">Viva Average</p>
               <p className="text-3xl font-bold text-gray-900">
-                {performanceMetrics.averageInterviewRating !== 'N/A' 
-                  ? `${performanceMetrics.averageInterviewRating}/5` 
+                {performanceMetrics.averageVivaScore !== 'N/A' 
+                  ? `${performanceMetrics.averageVivaScore}%` 
                   : 'N/A'}
               </p>
             </div>
             <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center">
-              <Star className="w-6 h-6 text-white" />
+              <MessageCircle className="w-6 h-6 text-white" />
             </div>
           </div>
         </div>
@@ -691,9 +692,9 @@ function PerformanceTab({ practiceResults, interviewResults, performanceMetrics 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Completed Activities</p>
+              <p className="text-sm text-gray-600 mb-1">Completed Activities</p>
               <p className="text-3xl font-bold text-gray-900">
-                {performanceMetrics.gradedAssignments + performanceMetrics.practiceTests + performanceMetrics.interviewsCompleted}
+                {performanceMetrics.gradedAssignments + performanceMetrics.practiceTests + performanceMetrics.vivaCompleted}
               </p>
             </div>
             <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -756,55 +757,56 @@ function PerformanceTab({ practiceResults, interviewResults, performanceMetrics 
         )}
       </div>
 
-      {/* Interview Results */}
+      {/* Viva Practice Results */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Interview History</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">Viva Practice History</h3>
         
-        {interviewResults.length > 0 ? (
+        {vivaResults.length > 0 ? (
           <div className="space-y-4">
-            {interviewResults.map((result, index) => (
+            {vivaResults.map((result, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-4">
                   <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    parseInt(result.rating) >= 4 ? 'bg-green-100' : 
-                    parseInt(result.rating) >= 3 ? 'bg-yellow-100' : 'bg-red-100'
+                    result.score >= 80 ? 'bg-green-100' : 
+                    result.score >= 60 ? 'bg-yellow-100' : 'bg-red-100'
                   }`}>
-                    <Star className={`w-5 h-5 ${
-                      parseInt(result.rating) >= 4 ? 'text-green-600' : 
-                      parseInt(result.rating) >= 3 ? 'text-yellow-600' : 'text-red-600'
+                    <MessageCircle className={`w-5 h-5 ${
+                      result.score >= 80 ? 'text-green-600' : 
+                      result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                     }`} />
                   </div>
                   
                   <div>
-                    <p className="font-medium text-gray-900">Mock Interview</p>
+                    <p className="font-medium text-gray-900">Viva Practice Session</p>
                     <p className="text-sm text-gray-600">
-                      {new Date(result.createdAt).toLocaleDateString()}
+                      {new Date(result.createdAt).toLocaleDateString()} • 
+                      {result.totalQuestions || 0} questions
                     </p>
-                    {result.feedback && (
-                      <p className="text-xs text-gray-500 mt-1 max-w-md truncate">
-                        {result.feedback}
-                      </p>
+                    {result.topic && (
+                      <p className="text-xs text-gray-500 mt-1">Topic: {result.topic}</p>
                     )}
                   </div>
                 </div>
                 
                 <div className="text-right">
                   <p className={`text-lg font-bold ${
-                    parseInt(result.rating) >= 4 ? 'text-green-600' : 
-                    parseInt(result.rating) >= 3 ? 'text-yellow-600' : 'text-red-600'
+                    result.score >= 80 ? 'text-green-600' : 
+                    result.score >= 60 ? 'text-yellow-600' : 'text-red-600'
                   }`}>
-                    {result.rating}/5
+                    {result.score}%
                   </p>
-                  <p className="text-sm text-gray-600">Rating</p>
+                  <p className="text-sm text-gray-600">
+                    {result.correctAnswers || 0}/{result.totalQuestions || 0}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="text-center py-8">
-            <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No interviews yet</h4>
-            <p className="text-gray-500">Complete mock interviews to see your results here</p>
+            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <h4 className="text-lg font-medium text-gray-900 mb-2">No viva practice yet</h4>
+            <p className="text-gray-500">Complete viva practice sessions to see your results here</p>
           </div>
         )}
       </div>

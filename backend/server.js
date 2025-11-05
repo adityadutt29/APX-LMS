@@ -27,6 +27,7 @@ const YoutubeCourseShareRoutes = require("./routes/YoutubeCourseShareRoutes");
 const CompilerRoutes = require("./routes/CompilerRoutes");
 const CourseRecommendationRoutes = require("./routes/CourseRecommendationRoutes");
 const cors = require("cors");
+const codeAnalysisRoutes = require('./routes/codeAnalysisRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -55,7 +56,8 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 app.use("/api/users", UserRoutes);
 app.use("/api/auth", AuthRoutes);
@@ -80,6 +82,7 @@ app.use("/api/student-youtubecourses", StudentYoutubeCoursesRoutes);
 app.use("/api/youtubecourse-share", YoutubeCourseShareRoutes);
 app.use("/api/compiler", CompilerRoutes);
 app.use("/api/course-recommendations", CourseRecommendationRoutes);
+app.use("/api/code-analysis", codeAnalysisRoutes);
 
 app.get("/", (req, res) => res.send("API Running with WebSocket support"));
 

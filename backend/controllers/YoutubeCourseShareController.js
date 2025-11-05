@@ -1,4 +1,7 @@
 const ProgressStore = require('../models/ProgressStore');
+const YoutubeCourseShare = require('../models/YoutubeCourseShare');
+const YoutubeCourse = require('../models/youtubeCourse');
+const User = require('../models/Users');
 
 // Get completed chapters for a course for the logged-in student
 exports.getChapterProgress = async (req, res) => {
@@ -33,9 +36,6 @@ exports.completeChapter = async (req, res) => {
     res.status(500).json({ error: 'Failed to update progress', details: error.message });
   }
 };
-const YoutubeCourseShare = require('../models/YoutubeCourseShare');
-const YoutubeCourse = require('../models/youtubeCourse');
-const User = require('../models/Users');
 
 // Share a course to selected students
 exports.shareCourseToStudents = async (req, res) => {
@@ -103,9 +103,15 @@ exports.getSharedCoursesForStudent = async (req, res) => {
         path: 'course',
         populate: { path: 'createdBy', select: 'username email' }
       });
-    const courses = shares.map(share => share.course);
+    
+    // Filter out shares where course is null (deleted courses)
+    const courses = shares
+      .filter(share => share.course != null)
+      .map(share => share.course);
+    
     res.json(courses);
   } catch (error) {
+    console.error('Error fetching shared courses:', error);
     res.status(500).json({ error: 'Failed to fetch shared courses', details: error.message });
   }
 };

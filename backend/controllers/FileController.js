@@ -1,7 +1,7 @@
-const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
+const { GridFSBucket } = require('mongodb');
 
-// @desc    Upload files
+// @desc    Upload files to MongoDB GridFS, return link
 // @route   POST /api/files/upload
 // @access  Private
 const uploadFiles = async (req, res) => {
@@ -10,153 +10,152 @@ const uploadFiles = async (req, res) => {
       return res.status(400).json({ message: 'No files uploaded' });
     }
 
-    const fileInfo = req.files.map(file => ({
-      originalName: file.originalname,
-      filename: file.filename,
-      path: file.path,
-      size: file.size,
-      mimetype: file.mimetype,
-      url: `/api/files/${file.filename}`
+    const db = mongoose.connection.client.db(mongoose.connection.db.databaseName);
+    const bucket = new GridFSBucket(db, { bucketName: 'uploads' });
+
+    const fileDocs = await Promise.all(req.files.map(async (file) => {
+      return new Promise((resolve, reject) => {
+        const uploadStream = bucket.openUploadStream(file.originalname, {
+          contentType: file.mimetype,
+          metadata: {
+            originalName: file.originalname,
+            size: file.size
+          }
+        });
+
+        uploadStream.end(file.buffer, (err) => {
+          if (err) return reject(err);
+          resolve({
+            id: uploadStream.id.toString(),
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+            url: `/api/files/gridfs/${uploadStream.id}`
+          });
+        });
+      });
     }));
 
     res.json({
       success: true,
-      message: 'Files uploaded successfully',
-      data: fileInfo
+      message: 'Files uploaded to MongoDB GridFS',
+      data: fileDocs
     });
   } catch (error) {
     console.error('Upload files error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 };
 
-// @desc    Get file
-// @route   GET /api/files/:filename
+// @desc    Get file from GridFS for preview
+// @route   GET /api/files/gridfs/:id
 // @access  Private
-const getFile = async (req, res) => {
+const getGridFSFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
-    const filePath = path.join(__dirname, '../uploads/course-files', filename);
+    const fileId = req.params.id;
+    const db = mongoose.connection.client.db(mongoose.connection.db.databaseName);
+    const bucket = new GridFSBucket(db, { bucketName: 'uploads' });
 
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      console.warn(`File not found: ${filename} at path: ${filePath}`);
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(fileId);
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid file id' });
+    }
+
+    const files = await bucket.find({ _id: objectId }).toArray();
+    if (!files || files.length === 0) {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // Set appropriate headers
-    const stat = fs.statSync(filePath);
-    const fileExtension = path.extname(filename).toLowerCase();
-    
-    // Set content type based on file extension
-    let contentType = 'application/octet-stream';
-    switch (fileExtension) {
-      case '.pdf':
-        contentType = 'application/pdf';
-        break;
-      case '.jpg':
-      case '.jpeg':
-        contentType = 'image/jpeg';
-        break;
-      case '.png':
-        contentType = 'image/png';
-        break;
-      case '.doc':
-        contentType = 'application/msword';
-        break;
-      case '.docx':
-        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        break;
-      case '.txt':
-        contentType = 'text/plain';
-        break;
-    }
+    const fileDoc = files[0];
+    res.setHeader('Content-Type', fileDoc.contentType || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `inline; filename="${fileDoc.filename}"`);
 
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Length', stat.size);
-    res.setHeader('Content-Disposition', `inline; filename="${path.basename(filename)}"`);
-    
-    // Stream the file
-    const readStream = fs.createReadStream(filePath);
-    readStream.pipe(res);
+    const downloadStream = bucket.openDownloadStream(objectId);
+    downloadStream.on('error', (err) => {
+      console.error('GridFS stream error:', err);
+      if (!res.headersSent) {
+        res.status(404).json({ message: 'File not found' });
+      }
+    });
+    downloadStream.pipe(res);
   } catch (error) {
-    console.error('Get file error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Get GridFS file error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Server error' });
+    }
   }
 };
 
-// @desc    Download file
-// @route   GET /api/files/:filename/download
+// @desc    Download file from GridFS
+// @route   GET /api/files/gridfs/:id/download
 // @access  Private
-const downloadFile = async (req, res) => {
+const downloadGridFSFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
-    const filePath = path.join(__dirname, '../uploads/course-files', filename);
+    const fileId = req.params.id;
+    const db = mongoose.connection.client.db(mongoose.connection.db.databaseName);
+    const bucket = new GridFSBucket(db, { bucketName: 'uploads' });
 
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      console.warn(`File not found for download: ${filename} at path: ${filePath}`);
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(fileId);
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid file id' });
+    }
+
+    const files = await bucket.find({ _id: objectId }).toArray();
+    if (!files || files.length === 0) {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // Get original filename from database or use current filename
-    const originalName = filename; // You might want to store original names in database
-
-    res.setHeader('Content-Disposition', `attachment; filename="${originalName}"`);
+    const fileDoc = files[0];
+    res.setHeader('Content-Disposition', `attachment; filename="${fileDoc.filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
-    
-    // Stream the file
-    const readStream = fs.createReadStream(filePath);
-    readStream.pipe(res);
+
+    const downloadStream = bucket.openDownloadStream(objectId);
+    downloadStream.on('error', (err) => {
+      console.error('GridFS download error:', err);
+      if (!res.headersSent) {
+        res.status(404).json({ message: 'File not found' });
+      }
+    });
+    downloadStream.pipe(res);
   } catch (error) {
-    console.error('Download file error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Download GridFS file error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Server error' });
+    }
   }
 };
 
-// @desc    Check if a file exists
-// @route   GET /api/files/:filename/exists
+// @desc    Delete file from GridFS
+// @route   DELETE /api/files/gridfs/:id
 // @access  Private
-const checkFileExists = async (req, res) => {
+const deleteGridFSFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
-    const filePath = path.join(__dirname, '../uploads/course-files', filename);
-    
-    const exists = fs.existsSync(filePath);
-    
-    res.json({
-      exists,
-      filename,
-      path: exists ? filePath : null,
-      size: exists ? fs.statSync(filePath).size : null
-    });
-  } catch (error) {
-    console.error('Check file exists error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
+    const fileId = req.params.id;
+    const db = mongoose.connection.client.db(mongoose.connection.db.databaseName);
+    const bucket = new GridFSBucket(db, { bucketName: 'uploads' });
 
-// @desc    Utility function to clean up missing files (for admin use)
-// @route   POST /api/files/cleanup
-// @access  Private (should be admin only)
-const cleanupMissingFiles = async (req, res) => {
-  try {
-    // This would need to be implemented based on your database structure
-    // For now, just return a placeholder response
-    res.json({
-      message: 'Cleanup functionality needs to be implemented based on your database schema',
-      note: 'This function should scan database records for file references and remove entries for non-existent files'
-    });
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(fileId);
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid file id' });
+    }
+
+    await bucket.delete(objectId);
+    res.json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
-    console.error('Cleanup missing files error:', error);
+    console.error('Delete GridFS file error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
 
 module.exports = {
   uploadFiles,
-  getFile,
-  downloadFile,
-  checkFileExists,
-  cleanupMissingFiles
+  getGridFSFile,
+  downloadGridFSFile,
+  deleteGridFSFile
 };

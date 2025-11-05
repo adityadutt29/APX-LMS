@@ -83,6 +83,123 @@ const generateChapterContent = async (req, res) => {
     console.log(
       `Starting content generation for ${course.chapters.length} chapters...`
     );
+    if (!process.env.YOUTUBE_API_KEY) {
+      console.warn(
+        "Warning: YOUTUBE_API_KEY is not set. YouTube searches may fail."
+      );
+    }
+
+    // Helper: YouTube search with fallbacks to avoid empty results
+    async function searchVideosWithFallback(query, altQuery, maxResults) {
+      // Try a series of increasingly permissive searches
+      const attempts = [
+        {
+          label: "medium+topicId",
+          params: {
+            part: ["snippet"],
+            q: query,
+            type: ["video"],
+            maxResults,
+            relevanceLanguage: "en",
+            videoDuration: "medium",
+            order: "relevance",
+            safeSearch: "strict",
+            topicId: "/m/01k8wb", // Computer Programming topic
+          },
+        },
+        {
+          label: "long+topicId",
+          params: {
+            part: ["snippet"],
+            q: query,
+            type: ["video"],
+            maxResults,
+            relevanceLanguage: "en",
+            videoDuration: "long",
+            order: "relevance",
+            safeSearch: "strict",
+            topicId: "/m/01k8wb",
+          },
+        },
+        {
+          label: "any+noTopicId",
+          params: {
+            part: ["snippet"],
+            q: query,
+            type: ["video"],
+            maxResults,
+            videoDuration: "any",
+            order: "relevance",
+          },
+        },
+        {
+          label: "broadQuery",
+          params: {
+            part: ["snippet"],
+            q: query.replace(/\bprogramming tutorial\b/i, "tutorial"),
+            type: ["video"],
+            maxResults,
+            videoDuration: "any",
+            order: "viewCount",
+          },
+        },
+        {
+          label: "minimal",
+          params: {
+            part: ["snippet"],
+            q: query,
+            type: ["video"],
+            maxResults,
+          },
+        },
+        {
+          label: "titleOnly",
+          params: {
+            part: ["snippet"],
+            q: altQuery,
+            type: ["video"],
+            maxResults,
+            order: "relevance",
+          },
+        },
+        {
+          label: "titleOnlyViewCount",
+          params: {
+            part: ["snippet"],
+            q: altQuery,
+            type: ["video"],
+            maxResults,
+            order: "viewCount",
+          },
+        },
+      ];
+
+      for (const attempt of attempts) {
+        try {
+          const resp = await youtube.search.list(attempt.params);
+          const total = resp?.data?.pageInfo?.totalResults;
+          const items = resp?.data?.items || [];
+          if (items.length > 0) {
+            if (attempt.label !== "medium+topicId") {
+              console.log(
+                `  Fallback search used: ${attempt.label} (found ${items.length}, total ${total})`
+              );
+            }
+            return items;
+          }
+          console.log(
+            `  No results with ${attempt.label}${
+              typeof total === "number" ? ` (total ${total})` : ""
+            }, trying next...`
+          );
+        } catch (e) {
+          console.warn(
+            `  YouTube search error on ${attempt.label}: ${e?.message || e}`
+          );
+        }
+      }
+      return [];
+    }
 
     // Process each chapter sequentially
     for (
@@ -100,33 +217,24 @@ const generateChapterContent = async (req, res) => {
       // Construct a more specific search query
       const searchQuery = `${course.topic} ${chapter.title} programming tutorial -gaming -gameplay`;
 
-      const searchResult = await youtube.search.list({
-        part: ["snippet"],
-        q: searchQuery,
-        type: ["video"],
-        maxResults: VIDEOS_PER_CHAPTER,
-        relevanceLanguage: "en",
-        videoDuration: "medium",
-        order: "relevance",
-        safeSearch: "strict",
-        topicId: "/m/01k8wb", // Computer Programming topic
-      });
+      // Search videos with resilient fallbacks
+      const altQuery = `${chapter.title} tutorial`;
+      const searchItems = await searchVideosWithFallback(searchQuery, altQuery, VIDEOS_PER_CHAPTER);
 
       const videoContents = [];
 
       // Process videos SEQUENTIALLY to avoid rate limits
-      for (
-        let videoIndex = 0;
-        videoIndex < searchResult.data.items.length;
-        videoIndex++
-      ) {
-        const item = searchResult.data.items[videoIndex];
+      if (searchItems.length === 0) {
+        console.log(
+          `  No videos found for chapter: ${chapter.title}. Skipping video processing for this chapter.`
+        );
+      }
+      for (let videoIndex = 0; videoIndex < searchItems.length; videoIndex++) {
+        const item = searchItems[videoIndex];
 
         try {
           console.log(
-            `  Processing video ${videoIndex + 1}/${
-              searchResult.data.items.length
-            }...`
+            `  Processing video ${videoIndex + 1}/${searchItems.length}...`
           );
 
           const videoData = await youtube.videos.list({
@@ -134,7 +242,10 @@ const generateChapterContent = async (req, res) => {
             id: [item.id.videoId],
           });
 
-          const videoDetails = videoData.data.items[0].snippet;
+          const videoDetails = videoData.data.items?.[0]?.snippet || {
+            title: "Unknown title",
+            description: "",
+          };
           const prompt = `Create a JSON object for this educational programming video about "${chapter.title}". Return ONLY a valid JSON object:
                     {
                         "summary": "Technical summary focusing on ${chapter.title}",
@@ -176,7 +287,7 @@ const generateChapterContent = async (req, res) => {
           }
 
           // Add delay between API calls to respect rate limits
-          if (videoIndex < searchResult.data.items.length - 1) {
+          if (videoIndex < searchItems.length - 1) {
             console.log(
               `  Waiting ${RATE_LIMIT_DELAY}ms before next API call...`
             );

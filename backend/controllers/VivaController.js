@@ -201,3 +201,65 @@ exports.getVivaFeedback = async (req, res) => {
     });
   }
 };
+
+// Get user's viva practice results for profile
+exports.getUserVivaResults = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+    
+    const answers = await UserAnswer.find({ userEmail })
+      .sort({ createdAt: -1 });
+
+    // Group answers by mockId to get unique viva sessions
+    const vivaMap = new Map();
+    answers.forEach(answer => {
+      if (!vivaMap.has(answer.mockIdRef)) {
+        vivaMap.set(answer.mockIdRef, {
+          mockIdRef: answer.mockIdRef,
+          createdAt: answer.createdAt,
+          ratings: [parseFloat(answer.rating) || 0],
+          feedback: answer.feedback,
+          totalQuestions: 1,
+          correctAnswers: (parseFloat(answer.rating) || 0) >= 3 ? 1 : 0
+        });
+      } else {
+        const existing = vivaMap.get(answer.mockIdRef);
+        existing.ratings.push(parseFloat(answer.rating) || 0);
+        existing.totalQuestions += 1;
+        existing.correctAnswers += (parseFloat(answer.rating) || 0) >= 3 ? 1 : 0;
+        if (answer.createdAt > existing.createdAt) {
+          existing.createdAt = answer.createdAt;
+        }
+      }
+    });
+
+    // Calculate score for each viva session
+    const vivaResults = Array.from(vivaMap.values()).map(viva => {
+      const averageRating = viva.ratings.reduce((sum, rating) => sum + rating, 0) / viva.ratings.length;
+      const score = Math.round((averageRating / 5) * 100); // Convert rating to percentage
+      
+      return {
+        mockIdRef: viva.mockIdRef,
+        score: score,
+        totalQuestions: viva.totalQuestions,
+        correctAnswers: viva.correctAnswers,
+        topic: 'Viva Practice', // Default topic
+        createdAt: viva.createdAt,
+        feedback: viva.feedback
+      };
+    });
+
+    res.json({
+      success: true,
+      data: vivaResults
+    });
+
+  } catch (error) {
+    console.error('Error fetching user viva results:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch viva results',
+      data: []
+    });
+  }
+};

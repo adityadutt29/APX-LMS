@@ -1,23 +1,23 @@
 const express = require('express');
-const { upload } = require('../middleware/fileUpload');
-const { uploadFiles, getFile, downloadFile, checkFileExists, cleanupMissingFiles } = require('../controllers/FileController');
+const multer = require('multer');
+const { uploadFiles, getGridFSFile, downloadGridFSFile, deleteGridFSFile } = require('../controllers/FileController');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// File upload route
+// Use memory storage for GridFS
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Upload files to GridFS
 router.post('/upload', auth, upload.array('files', 10), uploadFiles);
 
-// File viewing route
-router.get('/:filename', auth, getFile);
+// Get file from GridFS (preview)
+router.get('/gridfs/:id', auth, getGridFSFile);
 
-// File download route
-router.get('/:filename/download', auth, downloadFile);
+// Download file from GridFS
+router.get('/gridfs/:id/download', auth, downloadGridFSFile);
 
-// Check if file exists
-router.get('/:filename/exists', auth, checkFileExists);
-
-// Cleanup missing files (admin only)
-router.post('/cleanup', auth, cleanupMissingFiles);
+// Delete file from GridFS
+router.delete('/gridfs/:id', auth, deleteGridFSFile);
 
 module.exports = router;

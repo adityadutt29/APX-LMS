@@ -1,17 +1,32 @@
-function validateVivaGeneration(req, res, next) {
+exports.validateVivaGeneration = (req, res, next) => {
   const { subject, topics, difficulty } = req.body;
+
   if (!subject || !topics || !difficulty) {
-    return res.status(400).json({ success: false, message: 'All fields are required for viva generation.' });
+    return res.status(400).json({
+      success: false,
+      message: 'Subject, topics, and difficulty are required'
+    });
   }
-  next();
-}
 
-function validateAnswerSubmission(req, res, next) {
-  const { question, correctAns, userAns } = req.body;
-  if (!question || !correctAns || !userAns) {
-    return res.status(400).json({ success: false, message: 'All fields are required for answer submission.' });
+  if (!['easy', 'medium', 'hard'].includes(difficulty.toLowerCase())) {
+    return res.status(400).json({
+      success: false,
+      message: 'Difficulty must be easy, medium, or hard'
+    });
   }
-  next();
-}
 
-module.exports = { validateVivaGeneration, validateAnswerSubmission };
+  next();
+};
+
+exports.validateAnswerSubmission = (req, res, next) => {
+  const { question, userAns } = req.body;
+
+  if (!question || !userAns) {
+    return res.status(400).json({
+      success: false,
+      message: 'Question and user answer are required'
+    });
+  }
+
+  next();
+};
